@@ -46,7 +46,7 @@ class Board(object):
     for neighbor in neighbors:
       if neighbor not in visited_points:
         if self.points[neighbor[0]][neighbor[1]] == player:
-          size += self.count_liberties(neighbor, visited_points)
+          size += self.count_size(neighbor, visited_points)
     return size
 
   def remove_group(self, point):
@@ -56,6 +56,23 @@ class Board(object):
     for neighbor in neighbors:
       if player == self.points[neighbor[0]][neighbor[1]]:
         self.remove_group(neighbor)
+
+  def is_legal_move(self, player, point):
+    if not self.is_valid_point(point):
+      return False
+
+    if self.points[point[0]][point[1]] != 0:
+      return False
+
+    self.points[point[0]][point[1]] = player
+    has_liberties = self.count_liberties(point) > 0
+    self.points[point[0]][point[1]] = 0
+    if not has_liberties:
+      return False
+
+    # is it capturing?
+
+    return True
 
   def play(self, player, point):
     self.points[point[0]][point[1]] = player

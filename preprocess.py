@@ -1,69 +1,55 @@
-import uuid
-import os
 import numpy as np
 from sgfmill import sgf
 from board import Board
-import plane_generator
+import feature_planes
 
-examples = []
-target_moves = []
-for filename in os.listdir('data/sgf'):
-  with open('data/sgf/%s' % filename, 'rb') as f:
-    game = sgf.Sgf_game.from_bytes(f.read())
-    if game.get_handicap():
-      continue
+class Processor(object):
+  def __init__(self):
+    self.examples = []
+    self.target_moves = []
+    self.block_size = 100
 
-  board = Board()
-  move_history = []
+  def process(self, start_block, end_block):
+    current_block = start_block
+    current_sgf = self.block_size * start_block
+    while current_block < end_block:
+      while current_sgf < self.block_size * (current_block + 1):
+        self.process_sgf('data/sgf/%d.sgf' % current_sgf)
+        current_sgf += 1
+      self.flush(current_block)
+      current_block += 1
 
-  for node in game.get_main_sequence():
-    color, point = node.get_move()
-    if color is None or point is None:
-      continue
-    player = 1 if color == 'b' else -1
-    point = (18 - point[0], point[1])
+  def process_sgf(self, filename):
+    print(filename)
+    with open(filename, 'rb') as f:
+      game = sgf.Sgf_game.from_bytes(f.read())
 
-    liberties_counts = plane_generator.generate_liberties_counts(board)
-    player_capture_counts = plane_generator.generate_capture_counts(board, player, liberties_counts)
-    opponent_capture_counts = plane_generator.generate_capture_counts(board, player * -1, liberties_counts)
+    board = Board()
+    move_history = []
 
-    planes = [
-      plane_generator.value(board, player),
-      plane_generator.value(board, player * -1),
-      plane_generator.value(board, 0),
-      np.full((19, 19), 1),
-      plane_generator.liberties(board, player, liberties_counts, 1),
-      plane_generator.liberties(board, player, liberties_counts, 2),
-      plane_generator.liberties(board, player, liberties_counts, 3),
-      plane_generator.liberties(board, player, liberties_counts, 4),
-      plane_generator.liberties(board, player * -1, liberties_counts, 1),
-      plane_generator.liberties(board, player * -1, liberties_counts, 2),
-      plane_generator.liberties(board, player * -1, liberties_counts, 3),
-      plane_generator.liberties(board, player * -1, liberties_counts, 4),
-      plane_generator.history(move_history, 1),
-      plane_generator.history(move_history, 2),
-      plane_generator.history(move_history, 3),
-      plane_generator.history(move_history, 4),
-      plane_generator.capture_points(board, player, player_capture_counts, 1),
-      plane_generator.capture_points(board, player, player_capture_counts, 2),
-      plane_generator.capture_points(board, player, player_capture_counts, 3),
-      plane_generator.capture_points(board, player, player_capture_counts, 4),
-      plane_generator.capture_points(board, player * -1, opponent_capture_counts, 1),
-      plane_generator.capture_points(board, player * -1, opponent_capture_counts, 2),
-      plane_generator.capture_points(board, player * -1, opponent_capture_counts, 3),
-      plane_generator.capture_points(board, player * -1, opponent_capture_counts, 4),
-    ]
+    for node in game.get_main_sequence():
+      color, point = node.get_move()
+      if color is None or point is None:
+        continue
+      player = 1 if color == 'b' else -1
+      point = (18 - point[0], point[1])
 
-    examples.append(planes)
-    target_moves.append(point)
-    print(len(examples))
-    if len(examples) == 10000:
-      name = uuid.uuid4()
-      print('Writing %d examples to disk' % len(examples))
-      np.save('data/processed/examples.%s' % name, np.array(examples, dtype=np.uint8))
-      np.save('data/processed/moves.%s' % name, np.array(target_moves, dtype=np.uint8))
-      examples = []
-      moves = []
-    move_history.append(point)
-    board.play(player, point)
+      planes = feature_planes.generate(board, player, move_history)
+      self.examples.append(planes)
+      self.target_moves.append(point[0] * 19 + point[1])
+
+      move_history.append(point)
+      board.play(player, point)
+
+  def flush(self, block):
+    print('Writing %d examples to disk' % len(self.examples))
+    np.save('data/processed/%d' % block, np.array(self.examples, dtype=bool))
+    np.save('data/processed/%d.moves' % block, np.array(self.target_moves, dtype=np.uint8))
+    self.examples = []
+    self.target_moves = []
+
+
+if __name__ == '__main__':
+  p = Processor()
+  p.process(0, 1)
 
