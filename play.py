@@ -1,4 +1,5 @@
 import time
+import random
 import keras
 import numpy as np
 import feature_planes
@@ -26,8 +27,8 @@ while True:
   predictions = model.predict(np.array([planes])).tolist()[0]
   for i, prediction in enumerate(predictions):
     predictions[i] = (i, prediction)
-  predictions = sorted(predictions, key=lambda p: p[1])
-  n = 0
+  predictions = sorted(predictions, key=lambda p: p[1], reverse=True)
+  n = random.randint(0, 1) * 0
   while True:
     prediction = predictions[n]
     row = prediction[0] // 19

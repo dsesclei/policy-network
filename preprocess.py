@@ -1,3 +1,6 @@
+import sys
+import threading
+import time
 import numpy as np
 from sgfmill import sgf
 from board import Board
@@ -7,7 +10,7 @@ class Processor(object):
   def __init__(self):
     self.examples = []
     self.target_moves = []
-    self.block_size = 100
+    self.block_size = 10000
 
   def process(self, start_block, end_block):
     current_block = start_block
@@ -40,16 +43,19 @@ class Processor(object):
 
       move_history.append(point)
       board.play(player, point)
+      if len(move_history) > 20:
+        break
 
   def flush(self, block):
-    print('Writing %d examples to disk' % len(self.examples))
-    np.save('data/processed/%d' % block, np.array(self.examples, dtype=bool))
-    np.save('data/processed/%d.moves' % block, np.array(self.target_moves, dtype=np.uint8))
+    print('%d: Writing %d examples to disk' % (block, len(self.examples)))
+    np.savez_compressed('data/processed/%d' % block, moves=self.target_moves, examples=np.packbits(np.array(self.examples, dtype=bool), axis=1))
+    #np.save('data/processed/%d' % block, np.array(self.examples, dtype=bool))
+    #np.save('data/processed/%d.moves' % block, np.array(self.target_moves, dtype=np.uint8))
     self.examples = []
     self.target_moves = []
 
 
 if __name__ == '__main__':
   p = Processor()
-  p.process(0, 1)
+  p.process(int(sys.argv[1]), int(sys.argv[2]))
 
