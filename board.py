@@ -84,9 +84,12 @@ class Board(object):
           self.remove_group(neighbor)
 
   def __str__(self):
-    output = ''
-    for row in self.points:
-      line = ''
+    output = "   a b c d e f g h j k l m n o p q r s t\n"
+    for r, row in enumerate(self.points):
+      r = 19 - r
+      line = str(r) + ' '
+      if r < 10:
+        line += ' '
       for value in row:
         if value == 0:
           line += '.'

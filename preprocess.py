@@ -10,7 +10,7 @@ class Processor(object):
   def __init__(self):
     self.examples = []
     self.target_moves = []
-    self.block_size = 10000
+    self.block_size = 10
 
   def process(self, start_block, end_block):
     current_block = start_block
@@ -34,7 +34,9 @@ class Processor(object):
       color, point = node.get_move()
       if color is None or point is None:
         continue
+      print(point)
       player = 1 if color == 'b' else -1
+      print(player)
       point = (18 - point[0], point[1])
 
       planes = feature_planes.generate(board, player, move_history)
@@ -43,12 +45,12 @@ class Processor(object):
 
       move_history.append(point)
       board.play(player, point)
-      if len(move_history) > 20:
+      if len(move_history) > 10:
         break
 
   def flush(self, block):
     print('%d: Writing %d examples to disk' % (block, len(self.examples)))
-    np.savez_compressed('data/processed/%d' % block, moves=self.target_moves, examples=np.packbits(np.array(self.examples, dtype=bool), axis=1))
+    #np.savez_compressed('data/processed/%d' % block, moves=self.target_moves, examples=np.packbits(np.array(self.examples, dtype=bool), axis=1))
     #np.save('data/processed/%d' % block, np.array(self.examples, dtype=bool))
     #np.save('data/processed/%d.moves' % block, np.array(self.target_moves, dtype=np.uint8))
     self.examples = []
