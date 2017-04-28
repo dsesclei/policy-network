@@ -9,8 +9,8 @@ import feature_planes
 class Processor(object):
   def __init__(self):
     self.examples = []
-    self.target_moves = []
-    self.block_size = 10
+    self.moves = []
+    self.block_size = 500
 
   def process(self, start_block, end_block):
     current_block = start_block
@@ -24,8 +24,14 @@ class Processor(object):
 
   def process_sgf(self, filename):
     print(filename)
+    print(len(self.moves))
     with open(filename, 'rb') as f:
       game = sgf.Sgf_game.from_bytes(f.read())
+
+    winner = game.get_winner()
+    if winner is None or game.get_handicap() is not None:
+      print('Skipping game')
+      return
 
     board = Board()
     move_history = []
@@ -34,27 +40,29 @@ class Processor(object):
       color, point = node.get_move()
       if color is None or point is None:
         continue
-      print(point)
       player = 1 if color == 'b' else -1
-      print(player)
       point = (18 - point[0], point[1])
 
-      planes = feature_planes.generate(board, player, move_history)
-      self.examples.append(planes)
-      self.target_moves.append(point[0] * 19 + point[1])
+      if color == winner:
+        planes = feature_planes.generate(board, player, move_history)
+        self.examples.append(planes)
+        self.moves.append(point[0] * 19 + point[1])
 
       move_history.append(point)
-      board.play(player, point)
-      if len(move_history) > 10:
+
+      if board.is_legal_move(player, point):
+        board.play(player, point)
+      else:
+        print('Illegal move!')
+        print(filename)
+        print(node)
         break
 
   def flush(self, block):
     print('%d: Writing %d examples to disk' % (block, len(self.examples)))
-    #np.savez_compressed('data/processed/%d' % block, moves=self.target_moves, examples=np.packbits(np.array(self.examples, dtype=bool), axis=1))
-    #np.save('data/processed/%d' % block, np.array(self.examples, dtype=bool))
-    #np.save('data/processed/%d.moves' % block, np.array(self.target_moves, dtype=np.uint8))
+    np.savez_compressed('data/processed/%d' % block, moves=self.moves, examples=np.packbits(np.array(self.examples, dtype=bool), axis=1))
     self.examples = []
-    self.target_moves = []
+    self.moves = []
 
 
 if __name__ == '__main__':

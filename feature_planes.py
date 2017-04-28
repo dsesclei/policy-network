@@ -5,14 +5,14 @@ def value(board, value):
   for r in range(19):
     for c in range(19):
       if board.points[r][c] == value:
-        plane[r][c] = 1
+        plane[r][c] = True
   return plane
 
 def history(moves, n):
   plane = np.zeros([19, 19], dtype=bool)
   if len(moves) >= n:
     point = moves[-n]
-    plane[point[0]][point[1]] = 1
+    plane[point[0]][point[1]] = True
   return plane
 
 def calculate_liberties_counts(board):
@@ -34,12 +34,11 @@ def calculate_capture_counts(board, player, liberties_counts):
       if board.points[row][col] == 0:
         count = 0
         visited_points = set()
-        neighbors = board.get_neighbors((row, col))
-        for neighbor in neighbors:
-          if board.points[neighbor[0]][neighbor[1]] == player * -1 and neighbor not in visited_points:
-              liberties = liberties_counts[neighbor[0]][neighbor[1]]
-              if liberties == 1:
-                count += board.count_size(neighbor, visited_points)
+        for neighbor in board.get_neighbors((row, col)):
+          if board.points[neighbor[0]][neighbor[1]] == player * -1 and \
+             liberties_counts[neighbor[0]][neighbor[1]] == 1 and \
+             neighbor not in visited_points:
+               count += board.count_size(neighbor, visited_points)
         plane[row][col] = count
   return plane
 
@@ -48,9 +47,8 @@ def liberties(board, player, liberties_counts, count):
   for row in range(19):
     for col in range(19):
       if board.points[row][col] == player:
-        if count == 4 and liberties_counts[row][col] >= 4 \
-          or liberties_counts[row][col] == count:
-          plane[row][col] = 1
+        if liberties_counts[row][col] == count or (count == 4 and liberties_counts[row][col] >= 4):
+          plane[row][col] = True
   return plane
 
 def capture_points(board, player, capture_counts, count):
@@ -58,9 +56,8 @@ def capture_points(board, player, capture_counts, count):
   for row in range(19):
     for col in range(19):
       if board.points[row][col] == player:
-        if count == 4 and capture_counts[row][col] >= 4 \
-          or capture_counts[row][col] == count:
-          plane[row][col] = 1
+        if capture_counts[row][col] == count or (count == 4 and capture_counts[row][col] >= 4):
+          plane[row][col] = True
   return plane
 
 def generate(board, player, move_history):
