@@ -1,6 +1,8 @@
 import sys
-import threading
+import subprocess
 import time
+import random
+import os
 import numpy as np
 from sgfmill import sgf
 from board import Board
@@ -10,27 +12,25 @@ class Processor(object):
   def __init__(self):
     self.examples = []
     self.moves = []
-    self.block_size = 500
+    self.block_size = 10
+    self.paths = list(sorted(os.listdir('data/sgf')))
 
   def process(self, start_block, end_block):
     current_block = start_block
     current_sgf = self.block_size * start_block
     while current_block < end_block:
       while current_sgf < self.block_size * (current_block + 1):
-        self.process_sgf('data/sgf/%d.sgf' % current_sgf)
+        self.process_sgf('data/sgf/{}'.format(self.paths[current_sgf]))
         current_sgf += 1
       self.flush(current_block)
       current_block += 1
 
   def process_sgf(self, filename):
     print(filename)
-    print(len(self.moves))
     with open(filename, 'rb') as f:
       game = sgf.Sgf_game.from_bytes(f.read())
 
-    winner = game.get_winner()
-    if winner is None or game.get_handicap() is not None:
-      print('Skipping game')
+    if game.get_winner() is None or game.get_handicap() is not None:
       return
 
     board = Board()
@@ -43,7 +43,7 @@ class Processor(object):
       player = 1 if color == 'b' else -1
       point = (18 - point[0], point[1])
 
-      if color == winner:
+      if color == game.get_winner():
         planes = feature_planes.generate(board, player, move_history)
         self.examples.append(planes)
         self.moves.append(point[0] * 19 + point[1])
@@ -54,6 +54,7 @@ class Processor(object):
         board.play(player, point)
       else:
         print('Illegal move!')
+        subprocess.call('gsutil cp .claim gs://policy-network/.illegal.{}'.format(filename).split())
         print(filename)
         print(node)
         break
@@ -64,8 +65,14 @@ class Processor(object):
     self.examples = []
     self.moves = []
 
-
 if __name__ == '__main__':
   p = Processor()
-  p.process(int(sys.argv[1]), int(sys.argv[2]))
-
+  block = 0
+  total_blocks = len(p.paths) // p.block_size
+  while block < total_blocks:
+    if subprocess.run('gsutil -q ls gs://policy-network/.claim.{}'.format(block).split()).returncode == 0:
+      block += 1
+    else:
+      subprocess.call('gsutil cp .claim gs://policy-network/.claim.{}'.format(block).split())
+      p.process(block, block+1)
+      subprocess.call('gsutil cp data/processed/{}.npz gs://policy-network/work.{}.npz'.format(block, block).split())

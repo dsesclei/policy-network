@@ -69,7 +69,7 @@ def generate(board, player, move_history):
     value(board, player),
     value(board, player * -1),
     value(board, 0),
-    np.full((19, 19), 1),
+    np.full((19, 19), 1, dtype=bool),
     liberties(board, player, liberties_counts, 1),
     liberties(board, player, liberties_counts, 2),
     liberties(board, player, liberties_counts, 3),

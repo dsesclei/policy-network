@@ -1,10 +1,11 @@
+import copy
 import sys
 import numpy as np
 
 class Board(object):
   def __init__(self):
     self.points = np.zeros([19, 19])
-    self.ko_point = None
+    self.board_history = [None, None]
 
   def is_valid_point(self, point):
     return point[0] >= 0 and point[1] >= 0 and point[0] < 19 and point[1] < 19
@@ -63,11 +64,19 @@ class Board(object):
     if self.points[point[0]][point[1]] != 0:
       return False
 
-    if point == self.ko_point:
-      return False
+    empty_points = [n for n in self.get_neighbors(point) if self.points[n[0]][n[1]] == 0]
+    if empty_points:
+      return True
 
-    neighbors = self.get_neighbors(point)
-    for neighbor in neighbors:
+    if self.board_history[1] is not None:
+      points = copy.deepcopy(self.points)
+      self.apply(player, point)
+      is_ko = np.array_equal(self.board_history[1], self.points)
+      self.points = points
+      if is_ko:
+        return False
+
+    for neighbor in self.get_neighbors(point):
       if self.points[neighbor[0]][neighbor[1]] == player * -1 and self.count_liberties(neighbor) == 1:
         return True
 
@@ -81,19 +90,19 @@ class Board(object):
 
   def play(self, player, point):
     if not self.is_legal_move(player, point):
-      print('Playing illegal move!')
-      sys.exit(0)
+      print('Playing illegal move: {}'.format(point))
+    self.apply(player, point)
+    self.board_history = [copy.deepcopy(self.points), self.board_history[0]]
+
+  def apply(self, player, point):
     self.points[point[0]][point[1]] = player
-    self.ko_point = None
-    neighbors = self.get_neighbors(point)
-    for neighbor in neighbors:
+    for neighbor in self.get_neighbors(point):
       if self.points[neighbor[0]][neighbor[1]] == player * -1:
         liberties = self.count_liberties(neighbor)
         if liberties == 0:
           size = self.count_size(neighbor)
           self.remove_group(neighbor)
-          if size == 1:
-            self.ko_point = neighbor
+    
 
   def __str__(self):
     output = "   a b c d e f g h j k l m n o p q r s t\n"
