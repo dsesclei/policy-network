@@ -12,7 +12,7 @@ class Processor(object):
   def __init__(self):
     self.examples = []
     self.moves = []
-    self.block_size = 10
+    self.block_size = 1000
     self.paths = list(sorted(os.listdir('data/sgf')))
 
   def process(self, start_block, end_block):
